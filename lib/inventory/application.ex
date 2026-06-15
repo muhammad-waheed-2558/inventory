@@ -14,8 +14,8 @@ defmodule Inventory.Application do
       {Phoenix.PubSub, name: Inventory.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: Inventory.Finch},
-      # Start a worker by calling: Inventory.Worker.start_link(arg)
-      # {Inventory.Worker, arg},
+      # Inventory GenServer tree (Store + LowStockMonitor under one supervisor)
+      Inventory.InventorySupervisor,
       # Start to serve requests, typically the last entry
       InventoryWeb.Endpoint
     ]

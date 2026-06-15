@@ -18,6 +18,12 @@ defmodule InventoryWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    live "/inventory", InventoryLive.Index, :index
+    live "/inventory/new", InventoryLive.Index, :new
+    live "/inventory/:id/edit", InventoryLive.Index, :edit
+    live "/inventory/:id/stock", InventoryLive.Index, :stock
+    live "/inventory/:id/reservations", InventoryLive.Index, :reservations
   end
 
   # Other scopes may use custom stacks.
