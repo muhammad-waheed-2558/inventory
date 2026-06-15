@@ -27,9 +27,15 @@ defmodule Inventory.InventorySupervisor do
     interval_ms = Keyword.get(opts, :monitor_interval_ms, 30_000)
 
     children = [
+      # Timer manager for reservation expiry
       {Inventory.Store, name: Inventory.Store},
+      # Periodic low-stock broadcaster
       {Inventory.LowStockMonitor,
-       name: Inventory.LowStockMonitor, threshold: threshold, interval_ms: interval_ms}
+       name: Inventory.LowStockMonitor, threshold: threshold, interval_ms: interval_ms},
+      # ETS-backed read cache (starts after Store so PubSub is ready)
+      {Inventory.ItemCache, name: Inventory.ItemCache},
+      # Backorder queue for out-of-stock items
+      {Inventory.BackorderQueue, name: Inventory.BackorderQueue}
     ]
 
     Supervisor.init(children, strategy: :one_for_one, max_restarts: 3, max_seconds: 5)

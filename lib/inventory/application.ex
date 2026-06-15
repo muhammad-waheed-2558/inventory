@@ -14,7 +14,11 @@ defmodule Inventory.Application do
       {Phoenix.PubSub, name: Inventory.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: Inventory.Finch},
-      # Inventory GenServer tree (Store + LowStockMonitor under one supervisor)
+      # Registry for cart processes — must start before CartSupervisor
+      {Registry, keys: :unique, name: Inventory.CartRegistry},
+      # DynamicSupervisor for per-cart GenServers
+      Inventory.CartSupervisor,
+      # Inventory GenServer tree (Store + LowStockMonitor + ItemCache + BackorderQueue)
       Inventory.InventorySupervisor,
       # Start to serve requests, typically the last entry
       InventoryWeb.Endpoint
