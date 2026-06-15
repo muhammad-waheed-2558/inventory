@@ -12,7 +12,7 @@ defmodule Inventory.BackorderQueueTest do
     start_supervised!({BackorderQueue, name: name})
   end
 
-  defp create_item(qty \\ 0) do
+  defp create_item(qty) do
     {:ok, item} =
       Items.create_item(%{
         name: "Widget",
@@ -145,22 +145,31 @@ defmodule Inventory.BackorderQueueTest do
       item = create_item(0)
       parent = self()
 
-      # Spawn a temporary process that enqueues and then dies
+      # Spawn a process that enqueues and then WAITS for permission to die.
+      # This prevents the race where the process dies (and the :DOWN is
+      # processed) before we can assert count == 1.
       sub =
         spawn(fn ->
           {:ok, _ref} = GenServer.call(queue, {:enqueue, item.id, 5})
           send(parent, :enqueued)
-          # Die immediately
+
+          receive do
+            :die -> :ok
+          end
         end)
 
       assert_receive :enqueued, 500
+      # Sub is still alive — we can safely assert the entry exists
       assert BackorderQueue.count(queue) == 1
 
-      # Wait for the process to die and the :DOWN message to be handled
+      # Monitor sub BEFORE telling it to die, so we don't miss the :DOWN
       ref = Process.monitor(sub)
+      send(sub, :die)
 
       receive do
         {:DOWN, ^ref, :process, ^sub, _} -> :ok
+      after
+        500 -> flunk("subprocess did not exit")
       end
 
       Process.sleep(50)

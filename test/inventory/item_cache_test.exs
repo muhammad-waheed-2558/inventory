@@ -7,15 +7,23 @@ defmodule Inventory.ItemCacheTest do
 
   alias Inventory.{Items, ItemCache}
 
-  # Each test gets its own named ETS table and GenServer to avoid collisions
+  # Each test gets its own named ETS table and GenServer to avoid collisions.
+  #
+  # Why allow + reload?
+  # handle_continue(:load_items) runs synchronously inside start_link before
+  # start_supervised! returns, but at that moment the GenServer process has not
+  # yet been granted access to the test's Ecto sandbox connection.  We
+  # explicitly allow it, then call reload/1 (a synchronous handle_call) to
+  # re-run the DB load with proper sandbox access.  This exercises the same
+  # code path as handle_continue — the difference is only in which callback
+  # triggers the load, not what the load does.
   defp start_cache do
     table_name = :"item_cache_#{:erlang.unique_integer([:positive])}"
     name = :"ItemCache_#{:erlang.unique_integer([:positive])}"
 
     cache = start_supervised!({ItemCache, name: name, table_name: table_name})
-    # handle_continue(:load_items) fires immediately after init, but since
-    # it's processed before any external call, the cache is populated by the
-    # time start_supervised! returns.
+    Ecto.Adapters.SQL.Sandbox.allow(Inventory.Repo, self(), cache)
+    ItemCache.reload(cache)
     {cache, table_name}
   end
 

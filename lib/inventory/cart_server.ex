@@ -85,6 +85,25 @@ defmodule Inventory.CartServer do
   """
   def via_tuple(cart_id), do: {:via, Registry, {Inventory.CartRegistry, cart_id}}
 
+  @doc """
+  Override the default child spec so DynamicSupervisor uses `restart: :transient`.
+
+  With the default `:permanent`, a normal exit (checkout, TTL) would cause the
+  supervisor to restart the cart immediately — and repeated normal exits would
+  hit the `max_restarts` limit and kill the supervisor. `:transient` means:
+  restart only on unexpected crashes, not on `:normal` or `:shutdown` exits.
+
+  A unique `id` per `cart_id` is required because DynamicSupervisor allows
+  multiple children of the same module.
+  """
+  def child_spec(cart_id) do
+    %{
+      id: {__MODULE__, cart_id},
+      start: {__MODULE__, :start_link, [cart_id]},
+      restart: :transient
+    }
+  end
+
   # ─────────────────────────────────────────────────────────────
   # Public API
   # ─────────────────────────────────────────────────────────────
